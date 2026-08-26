@@ -57,3 +57,10 @@ tasks.named<ShadowJar>("shadowJar") {
     archiveClassifier.set("all")
     mergeServiceFiles()
 }
+
+tasks.register<JavaExec>("seed") {
+    group = "application"
+    description = "Wipes and repopulates the seeded tables with fake sample data."
+    mainClass.set("com.voxel.db.seed.SeedDataKt")
+    classpath = sourceSets["main"].runtimeClasspath
+}
