@@ -9,6 +9,7 @@ val postgresVersion = "42.7.4"
 val hikariVersion = "5.1.0"
 val logbackVersion = "1.5.6"
 val junitVersion = "5.10.2"
+val jsqlparserVersion = "4.9"
 
 plugins {
     kotlin("jvm") version "1.9.24"
@@ -40,6 +41,11 @@ dependencies {
     implementation("com.zaxxer:HikariCP:$hikariVersion")
 
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
+
+    // Real SQL parser for the validation sandbox -- we walk its AST ourselves
+    // rather than leaning on any built-in query-validation helpers it ships,
+    // so the accept/reject logic stays visible and explainable in one place.
+    implementation("com.github.jsqlparser:jsqlparser:$jsqlparserVersion")
 
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
