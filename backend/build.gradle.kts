@@ -10,9 +10,11 @@ val hikariVersion = "5.1.0"
 val logbackVersion = "1.5.6"
 val junitVersion = "5.10.2"
 val jsqlparserVersion = "4.9"
+val kotlinxSerializationVersion = "1.6.3"
 
 plugins {
     kotlin("jvm") version "1.9.24"
+    kotlin("plugin.serialization") version "1.9.24"
     application
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
@@ -47,8 +49,18 @@ dependencies {
     // so the accept/reject logic stays visible and explainable in one place.
     implementation("com.github.jsqlparser:jsqlparser:$jsqlparserVersion")
 
+    // For the thin Anthropic API wrapper -- a plain HTTP client, not an SDK,
+    // since the call itself is meant to stay simple (see LlmSqlGenerator).
+    implementation("io.ktor:ktor-client-core-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-client-content-negotiation-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-kotlinx-json-jvm:$ktorVersion")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:$kotlinxSerializationVersion")
+
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter:$junitVersion")
+    testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
 }
 
 tasks.test {
