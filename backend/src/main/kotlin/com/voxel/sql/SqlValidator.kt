@@ -2,6 +2,9 @@ package com.voxel.sql
 
 import net.sf.jsqlparser.JSQLParserException
 import net.sf.jsqlparser.parser.CCJSqlParserUtil
+import net.sf.jsqlparser.statement.Statement
+import net.sf.jsqlparser.util.TablesNamesFinder
+import net.sf.jsqlparser.statement.select.PlainSelect
 import net.sf.jsqlparser.statement.select.Select
 
 /**
@@ -26,6 +29,27 @@ object SqlValidator {
         // statement's Kotlin/Java type already tells us that reliably.
         if (statement !is Select) {
             return ValidationResult.Rejected("Only SELECT statements are allowed.")
+        }
+
+        // Cast to Statement explicitly: Select also implements Expression, and
+        // TablesNamesFinder overloads on both, which the compiler can't disambiguate on its own.
+        val referencedTables = TablesNamesFinder().getTables(statement as Statement)
+        val unknownTable = referencedTables.firstOrNull { it.lowercase() !in SchemaAllowlist.TABLES }
+        if (unknownTable != null) {
+            return ValidationResult.Rejected("Unknown table: $unknownTable")
+        }
+
+        // ORDER BY / HAVING can reference a SELECT item's own alias (e.g. "ORDER BY
+        // order_count") rather than a real column, so those aliases count as allowed too.
+        val outputAliases = (statement as? PlainSelect)?.selectItems
+            ?.mapNotNull { it.alias?.name?.lowercase() }
+            ?.toSet() ?: emptySet()
+
+        val unknownColumn = collectColumns(statement)
+            .map { it.columnName.lowercase() }
+            .firstOrNull { it !in SchemaAllowlist.COLUMNS && it !in outputAliases }
+        if (unknownColumn != null) {
+            return ValidationResult.Rejected("Unknown column: $unknownColumn")
         }
 
         val safeSql = wrapWithRowLimit(statement.toString())
