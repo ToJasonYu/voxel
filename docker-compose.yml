@@ -31,6 +31,8 @@ services:
       DB_NAME: voxel
       DB_USER: voxel
       DB_PASSWORD: voxel
+      READONLY_DB_USER: voxel_readonly
+      READONLY_DB_PASSWORD: voxel_readonly
     depends_on:
       postgres:
         condition: service_healthy
