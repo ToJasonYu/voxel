@@ -33,6 +33,9 @@ services:
       DB_PASSWORD: voxel
       READONLY_DB_USER: voxel_readonly
       READONLY_DB_PASSWORD: voxel_readonly
+      # Pulled from the host's own environment -- never hardcoded here. Set it
+      # before running `docker compose up`, e.g. `export ANTHROPIC_API_KEY=sk-...`.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy

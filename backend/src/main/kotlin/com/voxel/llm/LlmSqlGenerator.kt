@@ -31,7 +31,9 @@ private val SYSTEM_PROMPT = """
     - Output ONLY the SQL query. No markdown, no code fences, no explanation.
     - Only reference the tables and columns listed above.
     - Never write INSERT, UPDATE, DELETE, or any DDL -- SELECT only.
-    - For chart-style requests, prefer an aggregate (COUNT, SUM, AVG) with GROUP BY.
+    - The query must return exactly two columns: a label first, then a numeric
+      value second (e.g. "plan_tier, COUNT(*)") -- this becomes one chart's data points.
+    - Prefer an aggregate (COUNT, SUM, AVG) with GROUP BY to produce that value column.
 """.trimIndent()
 
 /**
