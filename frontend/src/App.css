@@ -1,0 +1,85 @@
+.session-gate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: auto;
+  padding: 32px;
+}
+
+.session-gate form {
+  display: flex;
+  gap: 8px;
+}
+
+.dashboard {
+  padding: 24px;
+  text-align: left;
+}
+
+.session-link {
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.command-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.command-bar form {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  min-width: 280px;
+}
+
+.command-bar input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.mic-button {
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.mic-button.listening {
+  background: var(--accent);
+  color: white;
+}
+
+.mic-unsupported {
+  font-size: 14px;
+}
+
+.error {
+  color: #ef4444;
+  width: 100%;
+}
+
+.widget-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 16px;
+}
+
+.widget-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.widget-card h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
