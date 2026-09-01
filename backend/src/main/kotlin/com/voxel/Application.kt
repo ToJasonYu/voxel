@@ -2,6 +2,7 @@ package com.voxel
 
 import com.expediagroup.graphql.server.ktor.GraphQL
 import com.expediagroup.graphql.server.ktor.graphQLPostRoute
+import com.expediagroup.graphql.server.ktor.graphQLSDLRoute
 import com.expediagroup.graphql.server.ktor.graphQLSubscriptionsRoute
 import com.expediagroup.graphql.server.ktor.graphiQLRoute
 import com.voxel.db.Database
@@ -55,6 +56,7 @@ fun main() {
 
             graphQLPostRoute()
             graphQLSubscriptionsRoute()
+            graphQLSDLRoute("/sdl") // schema-as-text, so the frontend's codegen can read it without a live query
             graphiQLRoute() // browser UI at /graphiql for manually poking the API
         }
     }.start(wait = true)

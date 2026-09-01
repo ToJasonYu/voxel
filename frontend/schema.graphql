@@ -1,0 +1,74 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+"Marks the field, argument, input field or enum value as deprecated"
+directive @deprecated(
+    "The reason for the deprecation"
+    reason: String = "No longer supported"
+  ) on FIELD_DEFINITION | ARGUMENT_DEFINITION | ENUM_VALUE | INPUT_FIELD_DEFINITION
+
+"Directs the executor to include this field or fragment only when the `if` argument is true"
+directive @include(
+    "Included when true."
+    if: Boolean!
+  ) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+"Indicates an Input Object is a OneOf Input Object."
+directive @oneOf on INPUT_OBJECT
+
+"Directs the executor to skip this field or fragment when the `if` argument is true."
+directive @skip(
+    "Skipped when true."
+    if: Boolean!
+  ) on FIELD | FRAGMENT_SPREAD | INLINE_FRAGMENT
+
+"Exposes a URL that specifies the behaviour of this scalar."
+directive @specifiedBy(
+    "The URL that specifies the behaviour of this scalar."
+    url: String!
+  ) on SCALAR
+
+type DashboardSession {
+  id: ID!
+  widgets: [Widget!]!
+}
+
+type DataPoint {
+  label: String!
+  value: Float!
+}
+
+type Mutation {
+  createSession: DashboardSession!
+  submitVoiceCommand(sessionId: ID!, transcript: String!): VoiceCommandResult!
+}
+
+type Query {
+  session(id: ID!): DashboardSession
+}
+
+type Subscription {
+  dashboardUpdated(sessionId: ID!): Widget!
+}
+
+type VoiceCommandResult {
+  errorMessage: String
+  success: Boolean!
+  widget: Widget
+}
+
+type Widget {
+  chartType: ChartType!
+  data: [DataPoint!]!
+  id: ID!
+  title: String!
+}
+
+enum ChartType {
+  BAR
+  LINE
+  PIE
+}
