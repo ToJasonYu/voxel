@@ -40,5 +40,18 @@ services:
       postgres:
         condition: service_healthy
 
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Host-reachable addresses (see frontend/Dockerfile) -- match the
+        # backend's host port mapping above.
+        VITE_GRAPHQL_HTTP_URL: http://localhost:8080/graphql
+        VITE_GRAPHQL_WS_URL: ws://localhost:8080/subscriptions
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
 volumes:
   postgres-data:
