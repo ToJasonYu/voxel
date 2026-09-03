@@ -12,11 +12,14 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.random.Random
 
-// Everything tunable lives up here rather than buried in the generation logic below.
+// The seeded dataset is framed as HackNight, a fictional hackathon's registration
+// and swag store -- customers are registrants, plan_tier is how they registered,
+// and order_items are swag/gear pulled from the event store. Everything tunable
+// lives up here rather than buried in the generation logic below.
 private val random = Random(42) // fixed seed -> reproducible dataset across re-runs
 private const val CUSTOMER_COUNT = 180
 private const val MONTHS_OF_HISTORY = 18L
-private val PLAN_TIERS = listOf("free", "pro", "enterprise")
+private val PLAN_TIERS = listOf("solo", "team", "sponsor")
 private val ORDER_STATUSES = listOf("pending", "completed", "cancelled", "refunded")
 private val FIRST_NAMES = listOf(
     "Ava", "Liam", "Noah", "Emma", "Olivia", "Mason", "Sophia", "Lucas", "Mia", "Ethan",
@@ -27,16 +30,16 @@ private val LAST_NAMES = listOf(
     "Lee", "Walker", "Hall", "Young", "King", "Wright", "Scott", "Green", "Baker", "Adams"
 )
 private val PRODUCTS = listOf(
-    "Wireless Mouse" to BigDecimal("24.99"),
+    "Rubber Duck (Debugging Edition)" to BigDecimal("12.99"),
+    "HackNight Hoodie" to BigDecimal("54.99"),
+    "Sticker Pack" to BigDecimal("8.99"),
     "Mechanical Keyboard" to BigDecimal("89.99"),
-    "USB-C Hub" to BigDecimal("34.50"),
-    "Laptop Stand" to BigDecimal("45.00"),
-    "Noise Cancelling Headphones" to BigDecimal("179.99"),
-    "Webcam 1080p" to BigDecimal("59.99"),
-    "Desk Lamp" to BigDecimal("29.99"),
-    "Monitor Arm" to BigDecimal("65.00"),
+    "Energy Drink 12-Pack" to BigDecimal("22.50"),
+    "Wireless Mouse" to BigDecimal("24.99"),
     "Portable SSD 1TB" to BigDecimal("99.99"),
-    "Bluetooth Speaker" to BigDecimal("39.99")
+    "Noise Cancelling Headphones" to BigDecimal("179.99"),
+    "Branded Water Bottle" to BigDecimal("18.00"),
+    "Conference Tote Bag" to BigDecimal("15.00")
 )
 
 /** Standalone entry point (`./gradlew seed`) that fills the seeded tables with fake data. */

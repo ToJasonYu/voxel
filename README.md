@@ -92,7 +92,7 @@ Open `http://localhost:5173`, create a dashboard, and share the URL (it carries 
 
 ### Re-seeding data
 
-The seed script (`backend/src/main/kotlin/com/voxel/db/seed/SeedData.kt`) generates about 180 customers, 450 orders, and 1100 order line items with a fixed random seed, spread across 18 months. To re-run it against a running Postgres:
+The seed script (`backend/src/main/kotlin/com/voxel/db/seed/SeedData.kt`) generates about 180 customers, 450 orders, and 1100 order line items with a fixed random seed, spread across 18 months. The data is framed as HackNight, a fictional hackathon: customers are registrants (`plan_tier` is `solo`, `team`, or `sponsor`), and orders are swag-store purchases (hoodies, stickers, rubber ducks, and the like). To re-run it against a running Postgres:
 
 ```bash
 cd backend
