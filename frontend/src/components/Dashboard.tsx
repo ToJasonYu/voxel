@@ -71,12 +71,13 @@ export function Dashboard({ sessionId }: { sessionId: string }) {
         <MicButton onTranscript={handleCommand} disabled={submitting} />
         <form onSubmit={handleTextSubmit}>
           <input
+            className="text-input"
             value={textCommand}
             onChange={(event) => setTextCommand(event.target.value)}
-            placeholder="...or type a command, e.g. 'show signups by month as a bar chart'"
+            placeholder="...or type a command, e.g. 'show registrations by month as a bar chart'"
             disabled={submitting}
           />
-          <button type="submit" disabled={submitting}>
+          <button className="btn-primary" type="submit" disabled={submitting}>
             Send
           </button>
         </form>

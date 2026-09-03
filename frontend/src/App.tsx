@@ -43,13 +43,20 @@ export default function App() {
   return (
     <div className="session-gate">
       <h1>Voxel</h1>
-      <p>Speak a command, watch a chart appear -- shared live with anyone on the same session link.</p>
-      <button onClick={handleCreate} disabled={creating}>
+      <p>Type or speak a command, watch a chart appear, shared live with anyone on the same session link.</p>
+      <button className="btn-primary" onClick={handleCreate} disabled={creating}>
         {creating ? "Creating..." : "Create new dashboard"}
       </button>
       <form onSubmit={handleJoin}>
-        <input value={joinId} onChange={(event) => setJoinId(event.target.value)} placeholder="...or paste a session id to join" />
-        <button type="submit">Join</button>
+        <input
+          className="text-input"
+          value={joinId}
+          onChange={(event) => setJoinId(event.target.value)}
+          placeholder="...or paste a session id to join"
+        />
+        <button className="btn-secondary" type="submit">
+          Join
+        </button>
       </form>
     </div>
   );
