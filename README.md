@@ -78,6 +78,7 @@ I verified this mechanism end-to-end (not just in isolation) by opening two inde
 git clone <this repo>
 cd voxel
 export ANTHROPIC_API_KEY=sk-ant-...   # optional -- without it, voice commands fail gracefully with a clear error
+export ANTHROPIC_WORKSPACE_ID=wrkspc_...   # only needed if your org uses workspace-scoped API keys
 docker compose up --build
 ```
 

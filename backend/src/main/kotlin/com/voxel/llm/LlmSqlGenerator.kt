@@ -43,6 +43,9 @@ private val SYSTEM_PROMPT = """
  */
 class LlmSqlGenerator(
     private val apiKey: String = System.getenv("ANTHROPIC_API_KEY").orEmpty(),
+    // Only some Anthropic orgs require this (workspace-scoped API keys) -- left
+    // blank and simply not sent for accounts that don't need it.
+    private val workspaceId: String = System.getenv("ANTHROPIC_WORKSPACE_ID").orEmpty(),
     private val model: String = "claude-sonnet-4-5",
     private val httpClient: HttpClient = HttpClient(CIO) {
         install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
@@ -54,6 +57,7 @@ class LlmSqlGenerator(
         val response = httpClient.post("https://api.anthropic.com/v1/messages") {
             header("x-api-key", apiKey)
             header("anthropic-version", "2023-06-01")
+            if (workspaceId.isNotBlank()) header("anthropic-workspace-id", workspaceId)
             contentType(ContentType.Application.Json)
             setBody(
                 AnthropicRequest(

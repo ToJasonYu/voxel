@@ -36,6 +36,8 @@ services:
       # Pulled from the host's own environment -- never hardcoded here. Set it
       # before running `docker compose up`, e.g. `export ANTHROPIC_API_KEY=sk-...`.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Only needed for orgs using workspace-scoped API keys -- see README.
+      ANTHROPIC_WORKSPACE_ID: ${ANTHROPIC_WORKSPACE_ID:-}
     depends_on:
       postgres:
         condition: service_healthy
