@@ -15,11 +15,12 @@ import {
 } from "recharts";
 import type { WidgetFieldsFragment } from "../generated/graphql";
 
-const PIE_COLORS = ["#7c3aed", "#ec4899", "#f59e0b", "#22c55e", "#06b6d4", "#a855f7", "#f472b6", "#84cc16"];
+const ACCENT = "#3b5bdb";
+const PIE_COLORS = ["#3b5bdb", "#6b7280", "#16a34a", "#d97706", "#0891b2", "#9333ea"];
 
 export function WidgetCard({ widget }: { widget: WidgetFieldsFragment }) {
   return (
-    <div className="widget-card" data-chart-type={widget.chartType}>
+    <div className="widget-card">
       <h3>{widget.title}</h3>
       <ResponsiveContainer width="100%" height={240}>
         {renderChart(widget)}
@@ -37,7 +38,7 @@ function renderChart(widget: WidgetFieldsFragment) {
           <XAxis dataKey="label" />
           <YAxis />
           <Tooltip />
-          <Line type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={2} />
+          <Line type="monotone" dataKey="value" stroke={ACCENT} strokeWidth={2} />
         </LineChart>
       );
     case "PIE":
@@ -60,7 +61,7 @@ function renderChart(widget: WidgetFieldsFragment) {
           <XAxis dataKey="label" />
           <YAxis />
           <Tooltip />
-          <Bar dataKey="value" fill="#7c3aed" />
+          <Bar dataKey="value" fill={ACCENT} />
         </BarChart>
       );
   }
