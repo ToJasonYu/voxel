@@ -55,10 +55,6 @@ source of truth for what a chart shows.
 couple of edge cases (an aggregate `JOIN` query, an `ORDER BY` referencing a `SELECT`-item
 alias) that came up during development.
 
-## Running it locally
-
-[... same as before ...]
-
 ## Non-goals
 
 - No support for arbitrary schemas — the allowlist is fixed to the three seeded tables.
