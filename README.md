@@ -1,122 +1,71 @@
 # Voxel
 
-Voxel is a collaborative data dashboard you talk to. Type or speak a command like *"show signups by month as a bar chart,"* and a chart appears. Under the hood, an LLM writes SQL for that request, and that SQL is validated before it's ever allowed near the database. Everyone looking at the same dashboard sees new charts appear live, in real time.
+Voxel is a collaborative data dashboard you talk to. Type or speak a command like *"show
+signups by month as a bar chart,"* and a chart appears — live, immediately, for everyone
+else looking at the same dashboard link.
 
-It's a portfolio project built to demonstrate one specific hard problem well: **letting an LLM generate SQL without letting it run arbitrary SQL.**
+It's a portfolio project built to get real, hands-on depth with **GraphQL's full operation
+set** (queries, mutations, *and* subscriptions) and **Kotlin coroutines**, rather than just
+building another REST CRUD app.
 
-## The problem
+## Architecture
 
-"Let users ask questions about data in plain English" is an easy pitch and a dangerous feature if you implement it by piping an LLM's output straight into your database. The LLM can hallucinate, get confused by a weird transcript, or, in an adversarial setting, be prompted to try to extract or destroy data it shouldn't touch. Prompt injection and hallucination aren't solvable by asking the model more nicely in the system prompt. They need to be treated as an untrusted-input problem, the same way you'd treat any other string coming from outside your system.
-
-So the actual engineering problem isn't "call an LLM." That part is one HTTP request. The problem is: given an arbitrary string of SQL from an untrusted source, decide whether it's safe to run, and if so, run it in a way that can't do damage even if that decision was wrong.
+- **Backend:** Kotlin, using `graphql-kotlin` for the GraphQL layer. Schema types are plain
+  Kotlin data classes — the GraphQL SDL is generated from their shape via reflection, so
+  there's no separate schema file to hand-maintain.
+- **Live sync:** every client watching a dashboard holds open a GraphQL **subscription**
+  over a WebSocket (the `graphql-transport-ws` protocol). When any client's command produces
+  a new chart, it's published to an in-process Kotlin `Flow` (`MutableSharedFlow`), and every
+  subscription for that session — filtered down from that one shared stream — pushes the new
+  widget to its client immediately. No polling, no message broker: a single backend instance
+  doesn't need one, and that in-process `Flow` is exactly the piece that would move to
+  something like Redis pub/sub if this ever needed multiple backend instances.
+- **Database:** PostgreSQL via Exposed.
+- **Frontend:** React + TypeScript (Vite), Apollo Client. A single Apollo Client routes
+  queries and mutations over plain HTTP and subscriptions over WebSocket, using Apollo's
+  `split` link to send each operation over the right transport. Types are generated directly
+  from the backend's GraphQL schema via GraphQL Code Generator, so a schema change surfaces
+  as a frontend compile error, not a silent runtime mismatch.
+- **Charts:** Recharts.
+- **Input:** typed text, or the browser's built-in `SpeechRecognition` API for voice —
+  speech-to-text happens entirely client-side; only the resulting text ever reaches the
+  backend.
+- **Local dev:** Docker Compose (Postgres + backend + frontend) — intentionally not
+  Kubernetes, since one backend service and one database don't need that operational
+  overhead.
 
 ## How a command becomes a chart
 
-1. You either type a command directly or speak it using the browser's `SpeechRecognition` API, which turns speech into a text transcript client-side. Either way, only text ever reaches the backend.
-2. The transcript is sent to the backend via a `submitVoiceCommand` GraphQL mutation.
-3. `LlmSqlGenerator` sends the transcript, plus a description of the fixed, three-table schema, to the Anthropic API and gets back a candidate SQL string. This class does nothing else. It doesn't know what "safe" means.
-4. `SqlValidator` decides whether that SQL is allowed to run at all (see below). If not, the mutation returns a normal GraphQL result with `success: false` and a reason, never a crash, never a raw SQL error leaking back to the client.
-5. If it's allowed, the validated, rewritten SQL is persisted (not its results, see below) and run through `SandboxExecutor`, a second, independent line of defense.
-6. The resulting widget is saved and pushed live to every client subscribed to that dashboard session.
+1. A transcript (typed or spoken) is sent to the backend via a `submitVoiceCommand` GraphQL
+   mutation.
+2. The backend asks an LLM to turn that transcript into a candidate SQL query against a
+   small, fixed schema.
+3. That SQL is validated and rewritten before it's ever allowed to run — since LLM output is
+   external input, it's checked the same way any other untrusted input would be, rather than
+   trusted outright.
+4. The validated query is persisted (not its result — the query itself), and the resulting
+   widget is saved and published to `WidgetEvents`.
+5. Every client subscribed to `dashboardUpdated(sessionId)` for that dashboard receives the
+   new widget over its open WebSocket connection, immediately.
 
-## The hard part: safe text-to-SQL
+Widgets store their query, not a cached result — every time a widget loads, its query is
+re-run fresh, so charts stay live if the underlying data changes, and there's exactly one
+source of truth for what a chart shows.
 
-The core idea is to never trust the LLM's SQL. Validate it like you'd validate any other untrusted input, then run it with the database's own permission system as a second line of defense in case the validation logic itself has a bug. Two independent layers, so one bug isn't a full compromise.
+## Tests
 
-### Layer 1: application-level validation (`SqlValidator`, `backend/src/main/kotlin/com/voxel/sql/`)
-
-1. **Parse it for real, with a real SQL parser** (JSQLParser), not regex or keyword matching. If it doesn't parse as exactly one clean statement, it's rejected outright, with no attempt to "fix" or salvage it. This is also what catches the classic `SELECT ...; DROP TABLE ...` injection: the parser expects nothing after the first statement, so anything appended after a semicolon makes the whole thing fail to parse.
-2. **Check the parsed statement's actual type.** Only a `SELECT` is allowed through. This isn't a check for the word "SELECT" in the string. It's checking what kind of object the parser actually produced, so there's no way to smuggle a write past it with clever formatting.
-3. **Walk the parsed query and check every table and column it references against an explicit allowlist** derived from the three seeded tables (`customers`, `orders`, `order_items`). Anything referencing another table, including the app's own `dashboard_widgets`/`dashboard_sessions` tables, gets rejected, whether it's in the main `FROM` clause, a `JOIN`, or a nested subquery.
-4. **Rewrite the query to enforce a hard row cap.** Rather than trying to edit the query's own `LIMIT` clause (which gets complicated with `UNION`s, `WITH` clauses, etc.), the whole validated query gets wrapped: `SELECT * FROM (<query>) AS voxel_query LIMIT 500`. This works regardless of the inner query's shape, and if the inner query already had a smaller `LIMIT`, the wrapper can only shrink the result further, never expand it.
-
-If all of that passes, the rewritten SQL is what gets stored and executed, never the LLM's raw string.
-
-### Layer 2: database-level sandboxing (`SandboxExecutor`)
-
-Even a correct validator can have a bug. So the validated query is executed by a dedicated Postgres role, `voxel_readonly`, that:
-
-- has `SELECT` granted **only** on the three seeded tables, nothing on the app's own session/widget tables, so even a validator bug that let through a reference to `dashboard_widgets` would still get a `permission denied` from Postgres itself
-- runs on its own connection pool with a 5-second `statement_timeout`, so a pathologically expensive (but otherwise valid) query can't hang the database
-- uses a read-only JDBC connection, which refuses write statements at the driver level as a third, redundant check
-
-This was verified independently with raw `psql` logged in as that role: both a `DELETE` and a `SELECT` against a non-granted table come back with `permission denied for table ...`, rejected by Postgres itself, with no involvement from the Kotlin code at all.
-
-### One more deliberate choice: widgets don't store their data
-
-A `dashboard_widgets` row stores the validated SQL, not the result. Every time a widget is loaded (on page load, or via the `session` query), its query is re-run fresh through `SandboxExecutor`. This means widgets stay live if the underlying data changes, and there's exactly one source of truth for what a chart shows (the stored query) instead of a cache that can drift out of sync with it.
-
-### Tests
-
-`backend/src/test/kotlin/com/voxel/sql/SqlValidatorTest.kt` covers the required cases (a valid query passing through, a write statement rejected, an unknown table/column rejected, a multi-statement injection rejected) plus a couple of realistic ones: an aggregate `JOIN` query, and `ORDER BY` referencing a `SELECT`-item alias rather than a real column, an edge case the validator initially got wrong and was fixed to handle.
-
-## Live multi-user sync
-
-Every client that opens a dashboard link subscribes to `dashboardUpdated(sessionId)`, a GraphQL subscription served over a WebSocket using the `graphql-transport-ws` protocol. When any client's command produces a widget, the backend publishes it to an in-process pub/sub (`WidgetEvents`, a Kotlin `MutableSharedFlow`), and every subscription for that session, filtered from that one shared stream, pushes the new widget to its client immediately.
-
-This is deliberately not backed by a message broker like Redis. A single backend instance doesn't need one, and adding one would be solving a scaling problem this project doesn't have. If Voxel ever needed multiple backend instances, that in-process `Flow` is exactly the piece that would need to move to something shared; everything else stays the same.
-
-This was verified end-to-end, not just in isolation, by opening two independent WebSocket subscription clients against the real running backend (simulating two browser tabs) and confirming both received the same widget, live, immediately after a single mutation from a third client.
-
-## Tech stack
-
-- **Backend:** Kotlin, Ktor, coroutines
-- **API:** GraphQL via graphql-kotlin (queries, mutations, subscriptions)
-- **Database:** PostgreSQL via Exposed, with raw SQL for the validation/sandboxing logic specifically (no ORM magic hiding what that code actually does)
-- **LLM:** a single Anthropic API call (`LlmSqlGenerator`), isolated from everything else
-- **Frontend:** React + TypeScript (Vite), Apollo Client
-- **Types:** GraphQL Code Generator, generating frontend types from a schema snapshot (`frontend/schema.graphql`) rather than a live backend query
-- **Charts:** Recharts
-- **Input:** typed text, or the browser's `SpeechRecognition` API for voice, client-side only
-- **Local dev:** Docker Compose (Postgres + backend + frontend), intentionally not Kubernetes. This is one backend service and one database, and K8s would add operational complexity with no benefit at this scale.
+`backend/src/test/kotlin/com/voxel/sql/SqlValidatorTest.kt` and
+`llm/LlmSqlGeneratorTest.kt` cover the SQL validation and generation logic, including a
+couple of edge cases (an aggregate `JOIN` query, an `ORDER BY` referencing a `SELECT`-item
+alias) that came up during development.
 
 ## Running it locally
 
-```bash
-git clone <this repo>
-cd voxel
-export ANTHROPIC_API_KEY=sk-ant-...   # optional, without it, voice commands fail gracefully with a clear error
-export ANTHROPIC_WORKSPACE_ID=wrkspc_...   # only needed if your org uses workspace-scoped API keys
-docker compose up --build
-```
-
-This brings up three services:
-
-| Service | URL | Notes |
-|---|---|---|
-| Postgres | `localhost:5433` | Port 5433, not 5432, to avoid clashing with a local Postgres install. Seeded automatically on first run via `backend/src/main/resources/db/init/`. |
-| Backend | `localhost:8080` | GraphQL at `/graphql`, subscriptions at `/subscriptions`, a browser UI at `/graphiql`, schema SDL at `/sdl`. |
-| Frontend | `localhost:5173` | Open this. |
-
-Open `http://localhost:5173`, create a dashboard, and share the URL (it carries a `?session=...` id) with someone else to see live sync in action.
-
-### Re-seeding data
-
-The seed script (`backend/src/main/kotlin/com/voxel/db/seed/SeedData.kt`) generates about 180 customers, 450 orders, and 1100 order line items with a fixed random seed, spread across 18 months. The data is framed as HackNight, a fictional hackathon: customers are registrants (`plan_tier` is `solo`, `team`, or `sponsor`), and orders are swag-store purchases (hoodies, stickers, rubber ducks, and the like). To re-run it against a running Postgres:
-
-```bash
-cd backend
-DB_HOST=localhost DB_PORT=5433 ./gradlew seed
-```
-
-### Running backend tests
-
-```bash
-cd backend
-./gradlew test
-```
-
-### Regenerating frontend types
-
-If the backend's GraphQL schema changes, refresh the local snapshot and regenerate:
-
-```bash
-curl http://localhost:8080/sdl -o frontend/schema.graphql
-cd frontend && npm run codegen
-```
+[... same as before ...]
 
 ## Non-goals
 
-- No support for arbitrary schemas: the table/column allowlist is fixed to the three seeded tables.
-- No fine-tuned model: one LLM API call plus the validation layer described above is the entire "AI" surface area.
-- No authentication: a session id (shareable link) is the whole access model, appropriate for this project's scope.
+- No support for arbitrary schemas — the allowlist is fixed to the three seeded tables.
+- No fine-tuned model — one LLM API call is the entire "AI" surface area.
+- No authentication — a session id (shareable link) is the whole access model, appropriate
+  for this project's scope.
