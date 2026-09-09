@@ -1,12 +1,8 @@
 # Voxel
 
 Voxel is a collaborative data dashboard you talk to. Type or speak a command like *"show
-signups by month as a bar chart,"* and a chart appears — live, immediately, for everyone
+signups by month as a bar chart,"* and a chart appears: live, immediately, for everyone
 else looking at the same dashboard link.
-
-It's a portfolio project built to get real, hands-on depth with **GraphQL's full operation
-set** (queries, mutations, *and* subscriptions) and **Kotlin coroutines**, rather than just
-building another REST CRUD app.
 
 ## Architecture
 
